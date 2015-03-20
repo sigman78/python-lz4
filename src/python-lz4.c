@@ -31,7 +31,6 @@
 
 #include <Python.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <math.h>
 #include "lz4.h"
 #include "lz4hc.h"

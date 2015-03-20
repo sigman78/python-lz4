@@ -2,9 +2,24 @@
 
 
 from setuptools import setup, find_packages, Extension
+from setuptools.command.build_ext import build_ext
 
-VERSION = (0, 7, 0)
+VERSION = (0, 7, 1)
 VERSION_STR = ".".join([str(x) for x in VERSION])
+LZ4_VER = "r119"
+
+COPT =  {'msvc': ['/Ox', '/DVERSION=\"\\\"%s\\\"\"' % VERSION_STR, '/DLZ4_VERSION=\"\\\"%s\\\"\"' % LZ4_VER],
+     'mingw32' : ['-O3', '-march=native', '-DVERSION="%s"' % VERSION_STR, '-DLZ4_VERSION="%s"' % LZ4_VER],
+     'clang' : ['-O3', '-march=native', '-DVERSION="%s"' % VERSION_STR, '-DLZ4_VERSION="%s"' % LZ4_VER],
+     'gcc' : ['-O3', '-march=native', '-DVERSION="%s"' % VERSION_STR, '-DLZ4_VERSION="%s"' % LZ4_VER]}
+
+class build_ext_subclass( build_ext ):
+    def build_extensions(self):
+        c = self.compiler.compiler_type
+        if COPT.has_key(c):
+           for e in self.extensions:
+               e.extra_compile_args = COPT[ c ]
+        build_ext.build_extensions(self)
 
 setup(
     name='lz4',
@@ -21,14 +36,6 @@ setup(
             'src/lz4.c',
             'src/lz4hc.c',
             'src/python-lz4.c'
-        ], extra_compile_args=[
-            "-std=c99",
-            "-O3",
-            "-Wall",
-            "-W",
-            "-Wundef",
-            "-DVERSION=\"%s\"" % VERSION_STR,
-            "-DLZ4_VERSION=\"r119\"",
         ])
     ],
     setup_requires=["nose>=1.0"],
@@ -43,4 +50,5 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
     ],
+    cmdclass = {'build_ext': build_ext_subclass },
 )
