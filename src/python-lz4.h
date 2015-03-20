@@ -39,6 +39,8 @@ PyMODINIT_FUNC initlz4(void);
 #define COMPRESS_DOCSTRING      "Compress string, returning the compressed data.\nRaises an exception if any error occurs."
 #define COMPRESSHC_DOCSTRING    COMPRESS_DOCSTRING "\n\nCompared to compress, this gives a better compression ratio, but is much slower."
 #define UNCOMPRESS_DOCSTRING    "Decompress string, returning the uncompressed data.\nRaises an exception if any error occurs."
+#define COMPRESS_RAW_DOCSTRING    "Compress headerless string, returning the compressed data.\nRaises an exception if any error occurs."
+#define UNCOMPRESS_RAW_DOCSTRING    "Decompress headerless string, returning the uncompressed data.\nRaises an exception if any error occurs."
 
 #if defined(_WIN32) && defined(_MSC_VER)
 # define inline __inline

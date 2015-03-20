@@ -124,6 +124,78 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
     return result;
 }
 
+// RAW interface
+static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
+    PyObject *result;
+    const char *source;
+    int source_size;
+    char *dest;
+    int dest_size;
+
+    if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
+        return NULL;
+
+    dest_size = hdr_size + LZ4_compressBound(source_size);
+    result = PyBytes_FromStringAndSize(NULL, dest_size);
+    if (result == NULL) {
+        return NULL;
+    }
+    dest = PyBytes_AS_STRING(result);
+    if (source_size > 0) {
+        int actual_size = LZ4_compress(source, dest, source_size);
+        /* Resizes are expensive; tolerate some slop to avoid. */
+        if (actual_size < (dest_size / 4) * 3) {
+            _PyBytes_Resize(&result, actual_size);
+        } else {
+            Py_SIZE(result) = actual_size;
+        }
+    }
+    return result;    
+}
+
+static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
+    PyObject *result;
+    const char *source;
+    int source_size;
+//    uint32_t dest_size;
+    int actual_size;
+    
+    int dest_size = 0;
+
+    if (!PyArg_ParseTuple(args, "s#|i", &source, &source_size, &dest_size)) {
+        return NULL;
+    }
+
+    // guess is large enough
+    if (dest_size == 0) {
+        dest_size = 2 * source_size;
+    }
+    if (dest_size > (INT_MAX / 2)) {
+        PyErr_Format(PyExc_ValueError, "input is too large: 0x%x", source_size);
+        return NULL;
+    }
+
+    // we should try it multiple times increasing expected buffer
+    result = PyBytes_FromStringAndSize(NULL, dest_size);
+    if (result != NULL && dest_size > 0) {
+        char *dest = PyBytes_AS_STRING(result);
+        int osize = LZ4_decompress_safe(source, dest, source_size, dest_size);
+        if (osize < 0) {
+            PyErr_Format(PyExc_ValueError, "corrupt input at byte %d", -osize);
+            Py_CLEAR(result);
+        }
+        actual_size = osize;
+        if (actual_size < (dest_size / 4) * 3) {
+            _PyBytes_Resize(&result, actual_size);
+        } else {
+            Py_SIZE(result) = actual_size;
+        }
+    }
+
+    return result;
+}
+
+
 static PyMethodDef Lz4Methods[] = {
     {"LZ4_compress",  py_lz4_compress, METH_VARARGS, COMPRESS_DOCSTRING},
     {"LZ4_uncompress",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
@@ -133,6 +205,9 @@ static PyMethodDef Lz4Methods[] = {
     {"decompress",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
     {"dumps",  py_lz4_compress, METH_VARARGS, COMPRESS_DOCSTRING},
     {"loads",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
+    {"compress_raw",  py_lz4_compress_raw, METH_VARARGS, COMPRESS_RAW_DOCSTRING},
+    {"decompress_raw",  py_lz4_uncompress_raw, METH_VARARGS, UNCOMPRESS_RAW_DOCSTRING},
+    {"uncompress_raw",  py_lz4_uncompress_raw, METH_VARARGS, UNCOMPRESS_RAW_DOCSTRING},
     {NULL, NULL, 0, NULL}
 };
 
@@ -200,10 +275,6 @@ void initlz4(void)
         Py_DECREF(module);
         INITERROR;
     }
-
-    PyModule_AddStringConstant(module, "VERSION", VERSION);
-    PyModule_AddStringConstant(module, "__version__", VERSION);
-    PyModule_AddStringConstant(module, "LZ4_VERSION", LZ4_VERSION);
 
 #if PY_MAJOR_VERSION >= 3
     return module;
