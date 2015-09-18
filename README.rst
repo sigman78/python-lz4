@@ -2,7 +2,7 @@
 python-lz4
 ==========
 
-.. image:: https://secure.travis-ci.org/steeve/python-lz4.png?branch=master
+.. image:: [![Build Status](https://travis-ci.org/sigman78/python-lz4.svg)](https://travis-ci.org/sigman78/python-lz4)
 
 Overview
 ========
@@ -60,4 +60,4 @@ Important note
 ==============
 Because LZ4 doesn't define a container format, the python bindings will insert the original data size as an integer at the start of the compressed payload, like most bindings do anyway (Java...)
 
-.. image:: https://cruel-carlota.pagodabox.com/d37459f4fce98f2983589a1c1c23a4e4
+
