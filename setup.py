@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 
-VERSION = (0, 7, 3)
+VERSION = (0, 7, 4)
 VERSION_STR = ".".join([str(x) for x in VERSION])
 LZ4_VER = "r119"
 

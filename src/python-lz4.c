@@ -250,7 +250,7 @@ static struct PyModuleDef moduledef = {
 };
 
 #define INITERROR return NULL
-PyObject *PyInit_lz4(void)
+PyObject *PyInit_lz4ext(void)
 
 #else
 #define INITERROR return
