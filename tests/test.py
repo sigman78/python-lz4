@@ -12,7 +12,7 @@ class TestLZ4(unittest.TestCase):
       self.assertEqual(DATA, lz4.loads(lz4.dumps(DATA)))
 
     def test_raw(self):
-      DATA = "abc def"
+      DATA = b"abc def"
       self.assertEqual(DATA, lz4.decompress_raw(lz4.compress_raw(DATA), 1024))
 
 if __name__ == '__main__':
