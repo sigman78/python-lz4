@@ -239,7 +239,7 @@ static int myextension_clear(PyObject *m) {
 
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
-        "lz4",
+        "lz4ext",
         NULL,
         sizeof(struct module_state),
         Lz4Methods,
@@ -254,14 +254,14 @@ PyObject *PyInit_lz4(void)
 
 #else
 #define INITERROR return
-void initlz4(void)
+void initlz4ext(void)
 
 #endif
 {
 #if PY_MAJOR_VERSION >= 3
     PyObject *module = PyModule_Create(&moduledef);
 #else
-    PyObject *module = Py_InitModule("lz4", Lz4Methods);
+    PyObject *module = Py_InitModule("lz4ext", Lz4Methods);
 #endif
     struct module_state *st = NULL;
 
@@ -270,7 +270,7 @@ void initlz4(void)
     }
     st = GETSTATE(module);
 
-    st->error = PyErr_NewException("lz4.Error", NULL, NULL);
+    st->error = PyErr_NewException("lz4ext.Error", NULL, NULL);
     if (st->error == NULL) {
         Py_DECREF(module);
         INITERROR;

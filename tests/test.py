@@ -1,19 +1,19 @@
-import lz4
+import lz4ext
 import sys
 
 
 import unittest
 import os
 
-class TestLZ4(unittest.TestCase):
+class TestLZ4ext(unittest.TestCase):
 
     def test_random(self):
       DATA = os.urandom(128 * 1024)  # Read 128kb
-      self.assertEqual(DATA, lz4.loads(lz4.dumps(DATA)))
+      self.assertEqual(DATA, lz4ext.loads(lz4ext.dumps(DATA)))
 
     def test_raw(self):
       DATA = b"abc def"
-      self.assertEqual(DATA, lz4.decompress_raw(lz4.compress_raw(DATA), 1024))
+      self.assertEqual(DATA, lz4ext.decompress_raw(lz4ext.compress_raw(DATA), 1024))
 
 if __name__ == '__main__':
     unittest.main()

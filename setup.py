@@ -32,7 +32,7 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     ext_modules=[
-        Extension('lz4', [
+        Extension('lz4ext', [
             'src/lz4.c',
             'src/lz4hc.c',
             'src/python-lz4.c'
