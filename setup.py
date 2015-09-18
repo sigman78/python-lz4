@@ -16,9 +16,9 @@ COPT =  {'msvc': ['/Ox', '/DVERSION=\"\\\"%s\\\"\"' % VERSION_STR, '/DLZ4_VERSIO
 class build_ext_subclass( build_ext ):
     def build_extensions(self):
         c = self.compiler.compiler_type
-        if COPT.has_key(c):
+        if c in COPT:
            for e in self.extensions:
-               e.extra_compile_args = COPT[ c ]
+               e.extra_compile_args = COPT[c]
         build_ext.build_extensions(self)
 
 setup(
