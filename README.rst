@@ -1,6 +1,8 @@
-==========
-python-lz4ext (former python-lz4)
-==========
+=============
+python-lz4ext
+=============
+
+(former python-lz4)
 
 .. image:: https://travis-ci.org/sigman78/python-lz4.svg?branch=master
     :target: https://travis-ci.org/sigman78/python-lz4
