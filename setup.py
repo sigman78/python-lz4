@@ -22,12 +22,12 @@ class build_ext_subclass( build_ext ):
         build_ext.build_extensions(self)
 
 setup(
-    name='lz4',
+    name='lz4ext',
     version=VERSION_STR,
     description="LZ4 Bindings for Python",
     long_description=open('README.rst', 'r').read(),
-    author='Steeve Morin',
-    author_email='steeve.morin@gmail.com',
+    author='Steeve Morin, Anton Stuk',
+    author_email='steeve.morin@gmail.com, sigman@ioupg.com',
     url='https://github.com/sigman78/python-lz4',
     packages=find_packages('src'),
     package_dir={'': 'src'},
