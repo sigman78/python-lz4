@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 
-VERSION = (0, 7, 1)
+VERSION = (0, 7, 2)
 VERSION_STR = ".".join([str(x) for x in VERSION])
 LZ4_VER = "r119"
 
@@ -28,7 +28,7 @@ setup(
     long_description=open('README.rst', 'r').read(),
     author='Steeve Morin',
     author_email='steeve.morin@gmail.com',
-    url='https://github.com/steeve/python-lz4',
+    url='https://github.com/sigman78/python-lz4',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     ext_modules=[

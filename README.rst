@@ -2,7 +2,8 @@
 python-lz4
 ==========
 
-.. image:: [![Build Status](https://travis-ci.org/sigman78/python-lz4.svg)](https://travis-ci.org/sigman78/python-lz4)
+.. image:: https://travis-ci.org/sigman78/python-lz4.svg?branch=master
+    :target: https://travis-ci.org/sigman78/python-lz4
 
 Overview
 ========
