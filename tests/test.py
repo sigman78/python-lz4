@@ -54,6 +54,16 @@ class TestLZ4ext(unittest.TestCase):
           with self.assertRaises(ValueError):
             lz4ext.decompress(b'\x00' * 4 + tail)
 
+    def test_empty_compression_is_canonical(self):
+      for compress in (lz4ext.compress, lz4ext.compressHC):
+        with self.subTest(compress=compress.__name__):
+          encoded = compress(b'')
+          self.assertEqual(b'\x00' * 5, encoded)
+          self.assertEqual(b'', lz4ext.decompress(encoded))
+      encoded = lz4ext.compress_raw(b'')
+      self.assertEqual(b'\x00', encoded)
+      self.assertEqual(b'', lz4ext.decompress_raw(encoded))
+
 if __name__ == '__main__':
     unittest.main()
 

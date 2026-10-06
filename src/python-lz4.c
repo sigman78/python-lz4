@@ -77,9 +77,14 @@ static PyObject *compress_with(compressor compress, PyObject *self, PyObject *ar
     }
     dest = PyBytes_AS_STRING(result);
     store_le32(dest, (uint32_t)source_size);
-    if (source_size > 0) {
+    {
         int osize = compress(source, dest + hdr_size, (int)source_size);
         int actual_size = hdr_size + osize;
+        if (osize <= 0) {
+            Py_DECREF(result);
+            PyErr_SetString(PyExc_ValueError, "compression failed");
+            return NULL;
+        }
         if (_PyBytes_Resize(&result, actual_size) < 0)
             return NULL;
     }
@@ -164,8 +169,13 @@ static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
         return NULL;
     }
     dest = PyBytes_AS_STRING(result);
-    if (source_size > 0) {
+    {
         int actual_size = LZ4_compress(source, dest, (int)source_size);
+        if (actual_size <= 0) {
+            Py_DECREF(result);
+            PyErr_SetString(PyExc_ValueError, "compression failed");
+            return NULL;
+        }
         if (_PyBytes_Resize(&result, actual_size) < 0)
             return NULL;
     }
