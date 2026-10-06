@@ -5,6 +5,7 @@ import sys
 import unittest
 import os
 import ctypes
+import subprocess
 
 class TestLZ4ext(unittest.TestCase):
 
@@ -63,6 +64,25 @@ class TestLZ4ext(unittest.TestCase):
       encoded = lz4ext.compress_raw(b'')
       self.assertEqual(b'\x00', encoded)
       self.assertEqual(b'', lz4ext.decompress_raw(encoded))
+
+    def test_raw_errors_do_not_crash(self):
+      script = '''
+import lz4ext
+data = b'A' * 4096
+encoded = lz4ext.compress_raw(data)
+for block, capacity in ((b'', 0), (b'\\xff', 32),
+                        (encoded, -1), (encoded, 0), (encoded, 32)):
+    try:
+        lz4ext.decompress_raw(block, capacity)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('invalid block/capacity was accepted')
+assert lz4ext.decompress_raw(encoded, len(data)) == data
+'''
+      completed = subprocess.run([sys.executable, '-c', script],
+                                 capture_output=True, text=True)
+      self.assertEqual(0, completed.returncode, completed.stderr)
 
 if __name__ == '__main__':
     unittest.main()

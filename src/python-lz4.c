@@ -200,9 +200,22 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    // guess is large enough
+    if (source_size == 0) {
+        PyErr_SetString(PyExc_ValueError, "empty input is not an LZ4 block");
+        return NULL;
+    }
+    if (dest_size < 0) {
+        PyErr_SetString(PyExc_ValueError, "output capacity must be nonnegative");
+        return NULL;
+    }
+
+    /* Retain the historical guess; callers may supply a larger capacity. */
     if (dest_size == 0) {
-        dest_size = 2 * source_size;
+        if (source_size > INT_MAX / 2) {
+            PyErr_SetString(PyExc_ValueError, "default output capacity exceeds LZ4 integer size limit");
+            return NULL;
+        }
+        dest_size = 2 * (int)source_size;
     }
     if (dest_size > (INT_MAX / 2)) {
         PyErr_Format(PyExc_ValueError, "input is too large: 0x%x", (unsigned int)source_size);
@@ -215,8 +228,9 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
         char *dest = PyBytes_AS_STRING(result);
         int osize = LZ4_decompress_safe(source, dest, (int)source_size, dest_size);
         if (osize < 0) {
-            PyErr_Format(PyExc_ValueError, "corrupt input at byte %d", -osize);
-            Py_CLEAR(result);
+            PyErr_SetString(PyExc_ValueError, "invalid block or insufficient output capacity");
+            Py_DECREF(result);
+            return NULL;
         }
         actual_size = osize;
         if (_PyBytes_Resize(&result, actual_size) < 0)
