@@ -94,6 +94,37 @@ assert lz4ext.decompress_raw(encoded, len(data)) == data
           self.assertEqual(data, lz4ext.decompress_raw(
               lz4ext.compress_raw(data), max(1, size)))
 
+    def test_decoder_output_limits(self):
+      data = b'abc def'
+      block = lz4ext.compress(data)
+      for decode in (lz4ext.decompress, lz4ext.uncompress, lz4ext.loads,
+                     lz4ext.LZ4_uncompress):
+        with self.subTest(decode=decode.__name__):
+          self.assertEqual(data, decode(block, max_output_size=7))
+          with self.assertRaises(ValueError):
+            decode(block, max_output_size=6)
+          for limit in (0, -1, 2 ** 31):
+            with self.assertRaises(ValueError):
+              decode(b'\x00' * 5, max_output_size=limit)
+          with self.assertRaises(TypeError):
+            decode(block, 7)
+          for declared_size in (64 * 1024 * 1024 + 1, 2 ** 31 - 1,
+                                2 ** 31, 2 ** 32 - 1):
+            with self.assertRaises(ValueError):
+              decode(declared_size.to_bytes(4, 'little') + b'\x00')
+      raw = lz4ext.compress_raw(data)
+      for decode in (lz4ext.decompress_raw, lz4ext.uncompress_raw):
+        with self.subTest(decode=decode.__name__):
+          self.assertEqual(data, decode(raw, 7, max_output_size=7))
+          for capacity in (8, 0, 64 * 1024 * 1024 + 1, 2 ** 31 - 1):
+            with self.assertRaises(ValueError):
+              decode(raw, capacity, max_output_size=7)
+          for limit in (0, -1, 2 ** 31):
+            with self.assertRaises(ValueError):
+              decode(b'\x00', 1, max_output_size=limit)
+          with self.assertRaises(TypeError):
+            decode(raw, 7, 7)
+
 if __name__ == '__main__':
     unittest.main()
 

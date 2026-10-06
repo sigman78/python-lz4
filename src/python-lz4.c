@@ -68,10 +68,20 @@ static inline void store_le32(char *c, uint32_t x) {
 
 static inline uint32_t load_le32(const char *c) {
     const uint8_t *d = (const uint8_t *)c;
-    return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+    return (uint32_t)d[0] | ((uint32_t)d[1] << 8) |
+           ((uint32_t)d[2] << 16) | ((uint32_t)d[3] << 24);
 }
 
 static const int hdr_size = sizeof(uint32_t);
+#define DEFAULT_MAX_OUTPUT_SIZE (64 * 1024 * 1024)
+
+static int validate_output_limit(Py_ssize_t limit) {
+    if (limit <= 0 || limit > INT_MAX) {
+        PyErr_SetString(PyExc_ValueError, "max_output_size must be between 1 and INT_MAX");
+        return 0;
+    }
+    return 1;
+}
 
 static PyObject *compress_with(compressor compress, PyObject *self, PyObject *args) {
     PyObject *result;
@@ -118,13 +128,19 @@ static PyObject *py_lz4_compressHC(PyObject *self, PyObject *args) {
     return compress_with(compress_hc, self, args);
 }
 
-static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
+static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *result;
     const char *source;
     Py_ssize_t source_size;
     uint32_t dest_size;
+    Py_ssize_t max_output_size = DEFAULT_MAX_OUTPUT_SIZE;
+    static char *keywords[] = {"data", "max_output_size", NULL};
 
-    if (!PyArg_ParseTuple(args, "s#", &source, &source_size)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#|$n", keywords,
+                                    &source, &source_size, &max_output_size)) {
+        return NULL;
+    }
+    if (!validate_output_limit(max_output_size)) {
         return NULL;
     }
 
@@ -142,6 +158,10 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
         PyErr_Format(PyExc_ValueError, "invalid size in header: 0x%x", dest_size);
         return NULL;
     }
+    if (dest_size > (uint32_t)max_output_size) {
+        PyErr_SetString(PyExc_ValueError, "declared output exceeds max_output_size");
+        return NULL;
+    }
     if (dest_size == 0) {
         if (source_size == hdr_size ||
             (source_size == hdr_size + 1 && source[hdr_size] == 0)) {
@@ -155,7 +175,7 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
         char *dest = PyBytes_AS_STRING(result);
         int osize = LZ4_decompress_safe(source + hdr_size, dest, (int)source_size - hdr_size, dest_size);
         if (osize < 0) {
-            PyErr_Format(PyExc_ValueError, "corrupt input at byte %d", -osize);
+            PyErr_SetString(PyExc_ValueError, "invalid compressed block");
             Py_CLEAR(result);
         } else if ((uint32_t)osize != dest_size) {
             PyErr_SetString(PyExc_ValueError, "decoded size does not match header");
@@ -200,7 +220,7 @@ static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
     return result;    
 }
 
-static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
+static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *result;
     const char *source;
     Py_ssize_t source_size;
@@ -208,8 +228,15 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
     int actual_size;
     
     int dest_size = 0;
+    Py_ssize_t max_output_size = DEFAULT_MAX_OUTPUT_SIZE;
+    static char *keywords[] = {"data", "output_size", "max_output_size", NULL};
 
-    if (!PyArg_ParseTuple(args, "s#|i", &source, &source_size, &dest_size)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#|i$n", keywords,
+                                    &source, &source_size, &dest_size,
+                                    &max_output_size)) {
+        return NULL;
+    }
+    if (!validate_output_limit(max_output_size)) {
         return NULL;
     }
 
@@ -235,12 +262,11 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
         }
         dest_size = 2 * (int)source_size;
     }
-    if (dest_size > (INT_MAX / 2)) {
-        PyErr_Format(PyExc_ValueError, "input is too large: 0x%x", (unsigned int)source_size);
+    if (dest_size > max_output_size) {
+        PyErr_SetString(PyExc_ValueError, "output capacity exceeds max_output_size");
         return NULL;
     }
 
-    // we should try it multiple times increasing expected buffer
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result != NULL && dest_size > 0) {
         char *dest = PyBytes_AS_STRING(result);
@@ -261,16 +287,16 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
 
 static PyMethodDef Lz4Methods[] = {
     {"LZ4_compress",  py_lz4_compress, METH_VARARGS, COMPRESS_DOCSTRING},
-    {"LZ4_uncompress",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
+    {"LZ4_uncompress",  (PyCFunction)py_lz4_uncompress, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_DOCSTRING},
     {"compress",  py_lz4_compress, METH_VARARGS, COMPRESS_DOCSTRING},
     {"compressHC",  py_lz4_compressHC, METH_VARARGS, COMPRESSHC_DOCSTRING},
-    {"uncompress",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
-    {"decompress",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
+    {"uncompress",  (PyCFunction)py_lz4_uncompress, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_DOCSTRING},
+    {"decompress",  (PyCFunction)py_lz4_uncompress, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_DOCSTRING},
     {"dumps",  py_lz4_compress, METH_VARARGS, COMPRESS_DOCSTRING},
-    {"loads",  py_lz4_uncompress, METH_VARARGS, UNCOMPRESS_DOCSTRING},
+    {"loads",  (PyCFunction)py_lz4_uncompress, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_DOCSTRING},
     {"compress_raw",  py_lz4_compress_raw, METH_VARARGS, COMPRESS_RAW_DOCSTRING},
-    {"decompress_raw",  py_lz4_uncompress_raw, METH_VARARGS, UNCOMPRESS_RAW_DOCSTRING},
-    {"uncompress_raw",  py_lz4_uncompress_raw, METH_VARARGS, UNCOMPRESS_RAW_DOCSTRING},
+    {"decompress_raw",  (PyCFunction)py_lz4_uncompress_raw, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_RAW_DOCSTRING},
+    {"uncompress_raw",  (PyCFunction)py_lz4_uncompress_raw, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_RAW_DOCSTRING},
     {NULL, NULL, 0, NULL}
 };
 
