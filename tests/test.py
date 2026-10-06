@@ -4,6 +4,7 @@ import sys
 
 import unittest
 import os
+import ctypes
 
 class TestLZ4ext(unittest.TestCase):
 
@@ -20,6 +21,23 @@ class TestLZ4ext(unittest.TestCase):
       block = bytes.fromhex('0f000005804142434445464748')
       expected = b'\x00' * 24 + b'ABCDEFGH'
       self.assertEqual(expected, lz4ext.decompress_raw(block, 32))
+
+    def test_resized_bytes_have_c_api_terminator(self):
+      as_string = ctypes.pythonapi.PyBytes_AsString
+      as_string.argtypes = [ctypes.py_object]
+      as_string.restype = ctypes.c_void_p
+      for size in range(1, 33):
+        data = bytes(range(1, size + 1))
+        for compress in (lz4ext.compress, lz4ext.compressHC,
+                         lz4ext.compress_raw):
+          encoded = compress(data)
+          self.assertEqual(0, ctypes.c_ubyte.from_address(
+              as_string(encoded) + len(encoded)).value)
+        encoded = lz4ext.compress_raw(data)
+        decoded = lz4ext.decompress_raw(encoded, size + 1)
+        self.assertEqual(data, decoded)
+        self.assertEqual(0, ctypes.c_ubyte.from_address(
+            as_string(decoded) + len(decoded)).value)
 
 if __name__ == '__main__':
     unittest.main()

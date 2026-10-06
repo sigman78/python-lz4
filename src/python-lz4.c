@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdlib.h>
 #include <math.h>
@@ -57,29 +58,30 @@ static const int hdr_size = sizeof(uint32_t);
 static PyObject *compress_with(compressor compress, PyObject *self, PyObject *args) {
     PyObject *result;
     const char *source;
-    int source_size;
+    Py_ssize_t source_size;
     char *dest;
     int dest_size;
 
     if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
         return NULL;
 
-    dest_size = hdr_size + LZ4_compressBound(source_size);
+    if (source_size > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 integer size limit");
+        return NULL;
+    }
+
+    dest_size = hdr_size + LZ4_compressBound((int)source_size);
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result == NULL) {
         return NULL;
     }
     dest = PyBytes_AS_STRING(result);
-    store_le32(dest, source_size);
+    store_le32(dest, (uint32_t)source_size);
     if (source_size > 0) {
-        int osize = compress(source, dest + hdr_size, source_size);
+        int osize = compress(source, dest + hdr_size, (int)source_size);
         int actual_size = hdr_size + osize;
-        /* Resizes are expensive; tolerate some slop to avoid. */
-        if (actual_size < (dest_size / 4) * 3) {
-            _PyBytes_Resize(&result, actual_size);
-        } else {
-            Py_SIZE(result) = actual_size;
-        }
+        if (_PyBytes_Resize(&result, actual_size) < 0)
+            return NULL;
     }
     return result;
 }
@@ -95,10 +97,15 @@ static PyObject *py_lz4_compressHC(PyObject *self, PyObject *args) {
 static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
     PyObject *result;
     const char *source;
-    int source_size;
+    Py_ssize_t source_size;
     uint32_t dest_size;
 
     if (!PyArg_ParseTuple(args, "s#", &source, &source_size)) {
+        return NULL;
+    }
+
+    if (source_size > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 integer size limit");
         return NULL;
     }
 
@@ -114,7 +121,7 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result != NULL && dest_size > 0) {
         char *dest = PyBytes_AS_STRING(result);
-        int osize = LZ4_decompress_safe(source + hdr_size, dest, source_size - hdr_size, dest_size);
+        int osize = LZ4_decompress_safe(source + hdr_size, dest, (int)source_size - hdr_size, dest_size);
         if (osize < 0) {
             PyErr_Format(PyExc_ValueError, "corrupt input at byte %d", -osize);
             Py_CLEAR(result);
@@ -128,27 +135,28 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
 static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
     PyObject *result;
     const char *source;
-    int source_size;
+    Py_ssize_t source_size;
     char *dest;
     int dest_size;
 
     if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
         return NULL;
 
-    dest_size = hdr_size + LZ4_compressBound(source_size);
+    if (source_size > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 integer size limit");
+        return NULL;
+    }
+
+    dest_size = hdr_size + LZ4_compressBound((int)source_size);
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result == NULL) {
         return NULL;
     }
     dest = PyBytes_AS_STRING(result);
     if (source_size > 0) {
-        int actual_size = LZ4_compress(source, dest, source_size);
-        /* Resizes are expensive; tolerate some slop to avoid. */
-        if (actual_size < (dest_size / 4) * 3) {
-            _PyBytes_Resize(&result, actual_size);
-        } else {
-            Py_SIZE(result) = actual_size;
-        }
+        int actual_size = LZ4_compress(source, dest, (int)source_size);
+        if (_PyBytes_Resize(&result, actual_size) < 0)
+            return NULL;
     }
     return result;    
 }
@@ -156,7 +164,7 @@ static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
 static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
     PyObject *result;
     const char *source;
-    int source_size;
+    Py_ssize_t source_size;
 //    uint32_t dest_size;
     int actual_size;
     
@@ -166,12 +174,17 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
         return NULL;
     }
 
+    if (source_size > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 integer size limit");
+        return NULL;
+    }
+
     // guess is large enough
     if (dest_size == 0) {
         dest_size = 2 * source_size;
     }
     if (dest_size > (INT_MAX / 2)) {
-        PyErr_Format(PyExc_ValueError, "input is too large: 0x%x", source_size);
+        PyErr_Format(PyExc_ValueError, "input is too large: 0x%x", (unsigned int)source_size);
         return NULL;
     }
 
@@ -179,17 +192,14 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args) {
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result != NULL && dest_size > 0) {
         char *dest = PyBytes_AS_STRING(result);
-        int osize = LZ4_decompress_safe(source, dest, source_size, dest_size);
+        int osize = LZ4_decompress_safe(source, dest, (int)source_size, dest_size);
         if (osize < 0) {
             PyErr_Format(PyExc_ValueError, "corrupt input at byte %d", -osize);
             Py_CLEAR(result);
         }
         actual_size = osize;
-        if (actual_size < (dest_size / 4) * 3) {
-            _PyBytes_Resize(&result, actual_size);
-        } else {
-            Py_SIZE(result) = actual_size;
-        }
+        if (_PyBytes_Resize(&result, actual_size) < 0)
+            return NULL;
     }
 
     return result;
