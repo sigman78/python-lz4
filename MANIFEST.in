@@ -1,5 +1,6 @@
 include README.rst
 include LICENSE CHANGELOG.md
+include RELEASING.md SECURITY.md
 include .gitattributes
 include tests/test.py tests/bench.py
 include src/*.h

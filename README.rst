@@ -6,6 +6,10 @@ python-lz4ext
 using vendored `LZ4 v1.10.0 <https://github.com/lz4/lz4/releases/tag/v1.10.0>`_.
 The distribution and import name are both ``lz4ext``.
 
+GitHub Actions tests/builds the supported Python matrix. See ``RELEASING.md``
+for release artifacts and the separate PyPI Trusted Publishing configuration,
+and ``SECURITY.md`` for vulnerability reporting.
+
 Install and develop
 ===================
 
