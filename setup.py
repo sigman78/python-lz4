@@ -6,7 +6,7 @@ from setuptools.command.build_ext import build_ext
 
 VERSION = (0, 7, 4)
 VERSION_STR = ".".join([str(x) for x in VERSION])
-LZ4_VER = "r119"
+LZ4_VER = "1.10.0"
 
 COPT =  {'msvc': ['/Ox', '/DVERSION=\"\\\"%s\\\"\"' % VERSION_STR, '/DLZ4_VERSION=\"\\\"%s\\\"\"' % LZ4_VER],
      'mingw32' : ['-O3', '-march=native', '-DVERSION="%s"' % VERSION_STR, '-DLZ4_VERSION="%s"' % LZ4_VER],

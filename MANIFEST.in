@@ -1,2 +1,4 @@
 include README.rst
 include src/*.h
+include src/LICENSE.lz4
+include src/README.lz4.md

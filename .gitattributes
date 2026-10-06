@@ -1,0 +1,6 @@
+# Preserve the vendored upstream files byte-for-byte on every platform.
+src/lz4.c text eol=lf
+src/lz4.h text eol=lf
+src/lz4hc.c text eol=lf
+src/lz4hc.h text eol=lf
+src/LICENSE.lz4 text eol=lf
