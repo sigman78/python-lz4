@@ -84,6 +84,16 @@ assert lz4ext.decompress_raw(encoded, len(data)) == data
                                  capture_output=True, text=True)
       self.assertEqual(0, completed.returncode, completed.stderr)
 
+    def test_compression_boundary_roundtrips(self):
+      for size in (0, 1, 16, 64 * 1024):
+        data = (b'abcdefgh' * ((size + 7) // 8))[:size]
+        for compress in (lz4ext.compress, lz4ext.compressHC):
+          with self.subTest(size=size, compress=compress.__name__):
+            self.assertEqual(data, lz4ext.decompress(compress(data)))
+        with self.subTest(size=size, compress='compress_raw'):
+          self.assertEqual(data, lz4ext.decompress_raw(
+              lz4ext.compress_raw(data), max(1, size)))
+
 if __name__ == '__main__':
     unittest.main()
 

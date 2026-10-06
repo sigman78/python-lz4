@@ -39,7 +39,25 @@
 
 #define MAX(a, b)               ((a) > (b) ? (a) : (b))
 
-typedef int (*compressor)(const char *source, char *dest, int isize);
+typedef int (*compressor)(const char *source, char *dest, int isize, int capacity);
+
+static int compress_hc(const char *source, char *dest, int isize, int capacity) {
+    return LZ4_compress_HC(source, dest, isize, capacity, LZ4HC_CLEVEL_DEFAULT);
+}
+
+static int compression_bound(Py_ssize_t source_size) {
+    int bound;
+    if (source_size > LZ4_MAX_INPUT_SIZE) {
+        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 maximum input size");
+        return 0;
+    }
+    bound = LZ4_compressBound((int)source_size);
+    if (bound <= 0 || bound > INT_MAX - (int)sizeof(uint32_t)) {
+        PyErr_SetString(PyExc_OverflowError, "compressed allocation size exceeds integer limit");
+        return 0;
+    }
+    return bound;
+}
 
 static inline void store_le32(char *c, uint32_t x) {
     c[0] = x & 0xff;
@@ -61,16 +79,17 @@ static PyObject *compress_with(compressor compress, PyObject *self, PyObject *ar
     Py_ssize_t source_size;
     char *dest;
     int dest_size;
+    int capacity;
 
     if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
         return NULL;
 
-    if (source_size > INT_MAX) {
-        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 integer size limit");
+    capacity = compression_bound(source_size);
+    if (capacity == 0) {
         return NULL;
     }
 
-    dest_size = hdr_size + LZ4_compressBound((int)source_size);
+    dest_size = hdr_size + capacity;
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result == NULL) {
         return NULL;
@@ -78,7 +97,7 @@ static PyObject *compress_with(compressor compress, PyObject *self, PyObject *ar
     dest = PyBytes_AS_STRING(result);
     store_le32(dest, (uint32_t)source_size);
     {
-        int osize = compress(source, dest + hdr_size, (int)source_size);
+        int osize = compress(source, dest + hdr_size, (int)source_size, capacity);
         int actual_size = hdr_size + osize;
         if (osize <= 0) {
             Py_DECREF(result);
@@ -92,11 +111,11 @@ static PyObject *compress_with(compressor compress, PyObject *self, PyObject *ar
 }
 
 static PyObject *py_lz4_compress(PyObject *self, PyObject *args) {
-    return compress_with(LZ4_compress, self, args);
+    return compress_with(LZ4_compress_default, self, args);
 }
 
 static PyObject *py_lz4_compressHC(PyObject *self, PyObject *args) {
-    return compress_with(LZ4_compressHC, self, args);
+    return compress_with(compress_hc, self, args);
 }
 
 static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
@@ -158,19 +177,18 @@ static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
         return NULL;
 
-    if (source_size > INT_MAX) {
-        PyErr_SetString(PyExc_OverflowError, "input exceeds LZ4 integer size limit");
+    dest_size = compression_bound(source_size);
+    if (dest_size == 0) {
         return NULL;
     }
 
-    dest_size = hdr_size + LZ4_compressBound((int)source_size);
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result == NULL) {
         return NULL;
     }
     dest = PyBytes_AS_STRING(result);
     {
-        int actual_size = LZ4_compress(source, dest, (int)source_size);
+        int actual_size = LZ4_compress_default(source, dest, (int)source_size, dest_size);
         if (actual_size <= 0) {
             Py_DECREF(result);
             PyErr_SetString(PyExc_ValueError, "compression failed");
