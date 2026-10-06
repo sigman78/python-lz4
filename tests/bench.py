@@ -1,23 +1,28 @@
-import uuid
-import timeit
-import lz4
-import snappy
-import os
-from timeit import Timer
+"""Run with an installed lz4ext: python tests/bench.py --loops 1000."""
+import argparse
+from pathlib import Path
+from timeit import timeit
+import lz4ext
 
-DATA = open("../src/lz4.c", "rb").read()
-LZ4_DATA = lz4.compress(DATA)
-SNAPPY_DATA = snappy.compress(DATA)
-LOOPS = 200000
 
-print("Data Size:")
-print("  Input: %d" % len(DATA))
-print("  LZ4: %d (%.2f)" % (len(LZ4_DATA), len(LZ4_DATA) / float(len(DATA))))
-print("  Snappy: %d (%.2f)" % (len(SNAPPY_DATA), len(SNAPPY_DATA) / float(len(DATA))))
-print("  LZ4 / Snappy: %f" % (float(len(LZ4_DATA)) / float(len(SNAPPY_DATA))))
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--loops", type=int, default=1000)
+    parser.add_argument("--input", type=Path,
+                        default=Path(__file__).resolve().parents[1] / "src" / "lz4.c")
+    args = parser.parse_args()
+    if args.loops <= 0:
+        parser.error("--loops must be positive")
+    data = args.input.read_bytes()
+    encoded = lz4ext.compress(data)
+    decode = lambda: lz4ext.decompress(encoded, max_output_size=max(1, len(data)))
+    assert decode() == data
+    print(f"Input: {len(data)} bytes; compressed: {len(encoded)} bytes")
+    print(f"Compression ({args.loops} calls): "
+          f"{timeit(lambda: lz4ext.compress(data), number=args.loops):.6f}s")
+    print(f"Decompression ({args.loops} calls): "
+          f"{timeit(decode, number=args.loops):.6f}s")
 
-print("Benchmark: %d calls" % LOOPS)
-print("  LZ4 Compression: %fs" % Timer("lz4.compress(DATA)", "from __main__ import DATA; import lz4").timeit(number=LOOPS))
-print("  Snappy Compression: %fs" % Timer("snappy.compress(DATA)", "from __main__ import DATA; import snappy").timeit(number=LOOPS))
-print("  LZ4 Decompression: %fs" % Timer("lz4.uncompress(LZ4_DATA)", "from __main__ import LZ4_DATA; import lz4").timeit(number=LOOPS))
-print("  Snappy Decompression : %fs" % Timer("snappy.uncompress(SNAPPY_DATA)", "from __main__ import SNAPPY_DATA; import snappy").timeit(number=LOOPS))
+
+if __name__ == "__main__":
+    main()
