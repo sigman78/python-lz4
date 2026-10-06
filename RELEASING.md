@@ -48,7 +48,7 @@ Build jobs have read-only repository permissions; pull requests do not publish.
    and `twine` first). On PowerShell, enumerate artifacts for pip rather than
    assuming shell expansion of `*.whl`.
 3. Push the reviewed commit and confirm the GitHub Actions test/build run passes.
-4. Create the matching tag, for example `v0.8.0` for version `0.8.0`, and publish
+4. Create the matching tag, for example `v1.0` for version `1.0`, and publish
    its GitHub release. Publishing the release is the action that enables PyPI
    upload. The workflow rebuilds and tests artifacts for that tagged commit.
 5. Inspect the release run and PyPI files. Failed publishing should be diagnosed

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0
+## 1.0
 
 - Update vendored LZ4 r119 to official v1.10.0.
 - Require CPython 3.11 or newer and contiguous binary input; reject text.

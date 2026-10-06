@@ -73,7 +73,7 @@ static inline uint32_t load_le32(const char *c) {
 static const int hdr_size = sizeof(uint32_t);
 #define DEFAULT_MAX_OUTPUT_SIZE (64 * 1024 * 1024)
 #ifndef LZ4EXT_VERSION
-#define LZ4EXT_VERSION "0.8.0"
+#define LZ4EXT_VERSION "1.0"
 #endif
 
 static int validate_output_limit(Py_ssize_t limit) {

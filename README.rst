@@ -88,7 +88,7 @@ reports the linked vendored library version. ``DEFAULT_MAX_OUTPUT_SIZE`` is
 Compatibility and migration
 ===========================
 
-Version 0.8.0 requires Python 3.11 or newer and rejects implicit text input.
+Version 1.0 requires Python 3.11 or newer and rejects implicit text input.
 Valid r119-era nonempty prefixed and raw blocks remain readable; compression
 may produce different bytes after the library upgrade. No frame API is added.
 Output above 64 MiB needs an explicit limit override. Incorrect size headers

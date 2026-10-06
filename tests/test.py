@@ -10,7 +10,7 @@ import subprocess
 class TestLZ4ext(unittest.TestCase):
 
     def test_version_constants(self):
-      self.assertEqual('0.8.0', lz4ext.__version__)
+      self.assertEqual('1.0', lz4ext.__version__)
       self.assertEqual(lz4ext.__version__, lz4ext.VERSION)
       self.assertEqual('1.10.0', lz4ext.LZ4_VERSION)
       self.assertEqual(64 * 1024 * 1024, lz4ext.DEFAULT_MAX_OUTPUT_SIZE)
