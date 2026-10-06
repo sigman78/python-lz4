@@ -32,12 +32,10 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdlib.h>
-#include <math.h>
+#include <stdint.h>
 #include "lz4.h"
 #include "lz4hc.h"
 #include "python-lz4.h"
-
-#define MAX(a, b)               ((a) > (b) ? (a) : (b))
 
 typedef int (*compressor)(const char *source, char *dest, int isize, int capacity);
 
@@ -83,16 +81,11 @@ static int validate_output_limit(Py_ssize_t limit) {
     return 1;
 }
 
-static PyObject *compress_with(compressor compress, PyObject *self, PyObject *args) {
+static PyObject *compress_with(compressor compress, const char *source, Py_ssize_t source_size) {
     PyObject *result;
-    const char *source;
-    Py_ssize_t source_size;
     char *dest;
     int dest_size;
     int capacity;
-
-    if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
-        return NULL;
 
     capacity = compression_bound(source_size);
     if (capacity == 0) {
@@ -120,26 +113,27 @@ static PyObject *compress_with(compressor compress, PyObject *self, PyObject *ar
     return result;
 }
 
+static PyObject *parse_compression(compressor compress, PyObject *args) {
+    Py_buffer input;
+    PyObject *result;
+    if (!PyArg_ParseTuple(args, "y*", &input))
+        return NULL;
+    result = compress_with(compress, input.buf, input.len);
+    PyBuffer_Release(&input);
+    return result;
+}
+
 static PyObject *py_lz4_compress(PyObject *self, PyObject *args) {
-    return compress_with(LZ4_compress_default, self, args);
+    return parse_compression(LZ4_compress_default, args);
 }
 
 static PyObject *py_lz4_compressHC(PyObject *self, PyObject *args) {
-    return compress_with(compress_hc, self, args);
+    return parse_compression(compress_hc, args);
 }
 
-static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args, PyObject *kwargs) {
+static PyObject *decompress_prefixed(const char *source, Py_ssize_t source_size, Py_ssize_t max_output_size) {
     PyObject *result;
-    const char *source;
-    Py_ssize_t source_size;
     uint32_t dest_size;
-    Py_ssize_t max_output_size = DEFAULT_MAX_OUTPUT_SIZE;
-    static char *keywords[] = {"data", "max_output_size", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#|$n", keywords,
-                                    &source, &source_size, &max_output_size)) {
-        return NULL;
-    }
     if (!validate_output_limit(max_output_size)) {
         return NULL;
     }
@@ -187,15 +181,10 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args, PyObject *kwa
 }
 
 // RAW interface
-static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
+static PyObject *compress_raw(const char *source, Py_ssize_t source_size) {
     PyObject *result;
-    const char *source;
-    Py_ssize_t source_size;
     char *dest;
     int dest_size;
-
-    if (!PyArg_ParseTuple(args, "s#", &source, &source_size))
-        return NULL;
 
     dest_size = compression_bound(source_size);
     if (dest_size == 0) {
@@ -220,22 +209,10 @@ static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
     return result;    
 }
 
-static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args, PyObject *kwargs) {
+static PyObject *decompress_raw(const char *source, Py_ssize_t source_size, int dest_size, Py_ssize_t max_output_size) {
     PyObject *result;
-    const char *source;
-    Py_ssize_t source_size;
-//    uint32_t dest_size;
     int actual_size;
-    
-    int dest_size = 0;
-    Py_ssize_t max_output_size = DEFAULT_MAX_OUTPUT_SIZE;
-    static char *keywords[] = {"data", "output_size", "max_output_size", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s#|i$n", keywords,
-                                    &source, &source_size, &dest_size,
-                                    &max_output_size)) {
-        return NULL;
-    }
     if (!validate_output_limit(max_output_size)) {
         return NULL;
     }
@@ -285,6 +262,43 @@ static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args, PyObject 
 }
 
 
+static PyObject *py_lz4_compress_raw(PyObject *self, PyObject *args) {
+    Py_buffer input;
+    PyObject *result;
+    if (!PyArg_ParseTuple(args, "y*", &input))
+        return NULL;
+    result = compress_raw(input.buf, input.len);
+    PyBuffer_Release(&input);
+    return result;
+}
+
+static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args, PyObject *kwargs) {
+    Py_buffer input;
+    PyObject *result;
+    Py_ssize_t max_output_size = DEFAULT_MAX_OUTPUT_SIZE;
+    static char *keywords[] = {"data", "max_output_size", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y*|$n", keywords,
+                                    &input, &max_output_size))
+        return NULL;
+    result = decompress_prefixed(input.buf, input.len, max_output_size);
+    PyBuffer_Release(&input);
+    return result;
+}
+
+static PyObject *py_lz4_uncompress_raw(PyObject *self, PyObject *args, PyObject *kwargs) {
+    Py_buffer input;
+    PyObject *result;
+    int output_size = 0;
+    Py_ssize_t max_output_size = DEFAULT_MAX_OUTPUT_SIZE;
+    static char *keywords[] = {"data", "output_size", "max_output_size", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y*|i$n", keywords,
+                                    &input, &output_size, &max_output_size))
+        return NULL;
+    result = decompress_raw(input.buf, input.len, output_size, max_output_size);
+    PyBuffer_Release(&input);
+    return result;
+}
+
 static PyMethodDef Lz4Methods[] = {
     {"LZ4_compress",  py_lz4_compress, METH_VARARGS, COMPRESS_DOCSTRING},
     {"LZ4_uncompress",  (PyCFunction)py_lz4_uncompress, METH_VARARGS | METH_KEYWORDS, UNCOMPRESS_DOCSTRING},
@@ -302,70 +316,18 @@ static PyMethodDef Lz4Methods[] = {
 
 
 
-struct module_state {
-    PyObject *error;
-};
-
-#if PY_MAJOR_VERSION >= 3
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
-
-#if PY_MAJOR_VERSION >= 3
-
-static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
-    Py_VISIT(GETSTATE(m)->error);
-    return 0;
-}
-
-static int myextension_clear(PyObject *m) {
-    Py_CLEAR(GETSTATE(m)->error);
-    return 0;
-}
-
-
 static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "lz4ext",
-        NULL,
-        sizeof(struct module_state),
-        Lz4Methods,
-        NULL,
-        myextension_traverse,
-        myextension_clear,
-        NULL
+    PyModuleDef_HEAD_INIT,
+    "lz4ext",
+    NULL,
+    0,
+    Lz4Methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
 
-#define INITERROR return NULL
-PyObject *PyInit_lz4ext(void)
-
-#else
-#define INITERROR return
-void initlz4ext(void)
-
-#endif
-{
-#if PY_MAJOR_VERSION >= 3
-    PyObject *module = PyModule_Create(&moduledef);
-#else
-    PyObject *module = Py_InitModule("lz4ext", Lz4Methods);
-#endif
-    struct module_state *st = NULL;
-
-    if (module == NULL) {
-        INITERROR;
-    }
-    st = GETSTATE(module);
-
-    st->error = PyErr_NewException("lz4ext.Error", NULL, NULL);
-    if (st->error == NULL) {
-        Py_DECREF(module);
-        INITERROR;
-    }
-
-#if PY_MAJOR_VERSION >= 3
-    return module;
-#endif
+PyMODINIT_FUNC PyInit_lz4ext(void) {
+    return PyModule_Create(&moduledef);
 }

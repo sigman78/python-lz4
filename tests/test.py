@@ -125,6 +125,62 @@ assert lz4ext.decompress_raw(encoded, len(data)) == data
           with self.assertRaises(TypeError):
             decode(raw, 7, 7)
 
+    def test_legacy_r119_blocks(self):
+      # Fixed output from both normal/HC compressors at baseline 0034d5c.
+      fixtures = (
+          (b'abc def', '7061626320646566'),
+          (b'A' * 4096, '1f410100fffffffffffffffffffffffffffffff6504141414141'),
+      )
+      for data, raw_hex in fixtures:
+        raw = bytes.fromhex(raw_hex)
+        prefixed = len(data).to_bytes(4, 'little') + raw
+        for decode in (lz4ext.loads, lz4ext.decompress, lz4ext.uncompress,
+                       lz4ext.LZ4_uncompress):
+          self.assertEqual(data, decode(prefixed))
+        for decode in (lz4ext.decompress_raw, lz4ext.uncompress_raw):
+          self.assertEqual(data, decode(raw, len(data)))
+
+    def test_contiguous_binary_inputs(self):
+      data = b'abc def'
+      for compress in (lz4ext.compress, lz4ext.compressHC, lz4ext.dumps,
+                       lz4ext.LZ4_compress, lz4ext.compress_raw):
+        for wrap in (bytes, bytearray, memoryview):
+          encoded = compress(wrap(data))
+          decode = (lz4ext.decompress_raw if compress == lz4ext.compress_raw
+                    else lz4ext.decompress)
+          self.assertEqual(data, decode(wrap(encoded)))
+        with self.assertRaises(TypeError):
+          compress('abc def')
+        with self.assertRaises((BufferError, TypeError)):
+          compress(memoryview(data)[::2])
+      for decode in (lz4ext.loads, lz4ext.decompress, lz4ext.uncompress,
+                     lz4ext.LZ4_uncompress, lz4ext.decompress_raw,
+                     lz4ext.uncompress_raw):
+        with self.assertRaises(TypeError):
+          decode('abc def')
+
+    def test_input_buffers_are_released(self):
+      for compress in (lz4ext.compress, lz4ext.compressHC, lz4ext.compress_raw):
+        data = bytearray(b'abc def')
+        compress(data)
+        data.extend(b'!')
+      for decode in (lz4ext.decompress, lz4ext.decompress_raw):
+        encoded = bytearray(lz4ext.compress(b'abc def') if
+                            decode == lz4ext.decompress else
+                            lz4ext.compress_raw(b'abc def'))
+        decode(encoded)
+        encoded.extend(b'!')
+        for kwargs in ({}, {'max_output_size': 0},
+                       {'max_output_size': 'bad'}, {'max_output_size': 2 ** 100}):
+          invalid = bytearray(b'\xff')
+          with self.assertRaises((ValueError, TypeError, OverflowError)):
+            decode(invalid, **kwargs)
+          invalid.extend(b'!')
+      invalid = bytearray(b'\xff')
+      with self.assertRaises(OverflowError):
+        lz4ext.decompress_raw(invalid, 2 ** 100)
+      invalid.extend(b'!')
+
 if __name__ == '__main__':
     unittest.main()
 
