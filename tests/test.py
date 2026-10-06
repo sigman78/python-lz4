@@ -39,6 +39,21 @@ class TestLZ4ext(unittest.TestCase):
         self.assertEqual(0, ctypes.c_ubyte.from_address(
             as_string(decoded) + len(decoded)).value)
 
+    def test_prefixed_size_must_match_decoded_size(self):
+      block = lz4ext.compress(b'abc def')
+      for declared_size in (1, 6, 8, 32):
+        with self.subTest(declared_size=declared_size):
+          with self.assertRaises(ValueError):
+            lz4ext.decompress(declared_size.to_bytes(4, 'little') + block[4:])
+
+    def test_prefixed_empty_encodings(self):
+      for block in (b'\x00' * 4, b'\x00' * 5):
+        self.assertEqual(b'', lz4ext.decompress(block))
+      for tail in (b'garbage', b'\x01', b'\x00\x00', b'\x00garbage'):
+        with self.subTest(tail=tail):
+          with self.assertRaises(ValueError):
+            lz4ext.decompress(b'\x00' * 4 + tail)
+
 if __name__ == '__main__':
     unittest.main()
 

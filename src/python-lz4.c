@@ -118,12 +118,23 @@ static PyObject *py_lz4_uncompress(PyObject *self, PyObject *args) {
         PyErr_Format(PyExc_ValueError, "invalid size in header: 0x%x", dest_size);
         return NULL;
     }
+    if (dest_size == 0) {
+        if (source_size == hdr_size ||
+            (source_size == hdr_size + 1 && source[hdr_size] == 0)) {
+            return PyBytes_FromStringAndSize("", 0);
+        }
+        PyErr_SetString(PyExc_ValueError, "invalid empty block");
+        return NULL;
+    }
     result = PyBytes_FromStringAndSize(NULL, dest_size);
     if (result != NULL && dest_size > 0) {
         char *dest = PyBytes_AS_STRING(result);
         int osize = LZ4_decompress_safe(source + hdr_size, dest, (int)source_size - hdr_size, dest_size);
         if (osize < 0) {
             PyErr_Format(PyExc_ValueError, "corrupt input at byte %d", -osize);
+            Py_CLEAR(result);
+        } else if ((uint32_t)osize != dest_size) {
+            PyErr_SetString(PyExc_ValueError, "decoded size does not match header");
             Py_CLEAR(result);
         }
     }
