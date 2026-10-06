@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lz4ext"
+version = "0.8.0"
+description = "Native LZ4 block compression bindings for CPython"
+readme = "README.rst"
+requires-python = ">=3.11"
+license = "BSD-3-Clause AND BSD-2-Clause"
+license-files = ["LICENSE", "src/LICENSE.lz4"]
+authors = [
+    {name = "Steeve Morin", email = "steeve.morin@gmail.com"},
+    {name = "Anton Stuk", email = "sigman@ioupg.com"},
+]
+classifiers = [
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/sigman78/python-lz4"
+Issues = "https://github.com/sigman78/python-lz4/issues"
+
+[tool.setuptools]
+packages = []

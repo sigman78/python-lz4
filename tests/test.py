@@ -9,6 +9,12 @@ import subprocess
 
 class TestLZ4ext(unittest.TestCase):
 
+    def test_version_constants(self):
+      self.assertEqual('0.8.0', lz4ext.__version__)
+      self.assertEqual(lz4ext.__version__, lz4ext.VERSION)
+      self.assertEqual('1.10.0', lz4ext.LZ4_VERSION)
+      self.assertEqual(64 * 1024 * 1024, lz4ext.DEFAULT_MAX_OUTPUT_SIZE)
+
     def test_random(self):
       DATA = os.urandom(128 * 1024)  # Read 128kb
       self.assertEqual(DATA, lz4ext.loads(lz4ext.dumps(DATA)))

@@ -72,6 +72,9 @@ static inline uint32_t load_le32(const char *c) {
 
 static const int hdr_size = sizeof(uint32_t);
 #define DEFAULT_MAX_OUTPUT_SIZE (64 * 1024 * 1024)
+#ifndef LZ4EXT_VERSION
+#define LZ4EXT_VERSION "0.8.0"
+#endif
 
 static int validate_output_limit(Py_ssize_t limit) {
     if (limit <= 0 || limit > INT_MAX) {
@@ -329,5 +332,15 @@ static struct PyModuleDef moduledef = {
 };
 
 PyMODINIT_FUNC PyInit_lz4ext(void) {
-    return PyModule_Create(&moduledef);
+    PyObject *module = PyModule_Create(&moduledef);
+    if (module == NULL)
+        return NULL;
+    if (PyModule_AddStringConstant(module, "__version__", LZ4EXT_VERSION) < 0 ||
+        PyModule_AddStringConstant(module, "VERSION", LZ4EXT_VERSION) < 0 ||
+        PyModule_AddStringConstant(module, "LZ4_VERSION", LZ4_versionString()) < 0 ||
+        PyModule_AddIntConstant(module, "DEFAULT_MAX_OUTPUT_SIZE", DEFAULT_MAX_OUTPUT_SIZE) < 0) {
+        Py_DECREF(module);
+        return NULL;
+    }
+    return module;
 }

@@ -10,4 +10,5 @@ Retrieved from https://raw.githubusercontent.com/lz4/lz4/v1.10.0/lib/
 on 2026-10-05. The upstream BSD-2-Clause license is in `LICENSE.lz4`.
 
 When updating these files, copy them verbatim from an official release,
-update this provenance and `LZ4_VER` in `setup.py`, and retain the license.
+update this provenance and the library version in the README/changelog, and
+retain the license. The extension reports `LZ4_VERSION` from the linked library.
