@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1
+
+- Update vendored LZ4 v1.10.0 to official v1.11.1 (upstream speedups and
+  corner-case fixes; block format and binding API unchanged).
+
 ## Unreleased
 
 - Build and test Linux aarch64 wheels (manylinux and musllinux).
