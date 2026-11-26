@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Build and test Linux aarch64 wheels (manylinux and musllinux).
 - Build and test CPython 3.15 wheels.
 
 ## 1.0
