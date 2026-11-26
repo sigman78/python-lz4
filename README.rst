@@ -3,7 +3,7 @@ python-lz4ext
 =============
 
 ``lz4ext`` provides native LZ4 block compression for CPython 3.11–3.15,
-using vendored `LZ4 v1.10.0 <https://github.com/lz4/lz4/releases/tag/v1.10.0>`_.
+using vendored `LZ4 v1.11.1 <https://github.com/lz4/lz4/releases/tag/v1.11.1>`_.
 The distribution and import name are both ``lz4ext``.
 
 GitHub Actions tests/builds the supported Python matrix. See ``RELEASING.md``

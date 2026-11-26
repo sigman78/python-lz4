@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lz4ext"
-version = "1.0"
+version = "1.1"
 description = "Native LZ4 block compression bindings for CPython"
 readme = "README.rst"
 requires-python = ">=3.11"
