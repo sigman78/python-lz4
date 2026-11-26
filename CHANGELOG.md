@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Build and test Linux aarch64 wheels (manylinux and musllinux).
+
 ## 1.0
 
 - Update vendored LZ4 r119 to official v1.10.0.

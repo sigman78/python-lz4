@@ -6,12 +6,12 @@ can publish its tested artifacts to PyPI. Creating a tag or pushing a branch
 alone does not publish. The tag must exactly equal `v` plus the project version.
 
 The matrix tests CPython 3.11–3.14 on Linux, Windows, and macOS with
-`PYTHONMALLOC=debug`. cibuildwheel tests installed wheels on Linux x86_64
-(manylinux and musllinux), Windows AMD64, and macOS x86_64/arm64. It selects
-normal CPython builds, excluding free-threaded builds. The source distribution
-is installed and tested in a clean environment. Distribution artifacts from
-each workflow run are available for review; remote checks must actually run
-before platform compatibility is considered verified.
+`PYTHONMALLOC=debug`. cibuildwheel tests installed wheels on Linux x86_64 and
+aarch64 (manylinux and musllinux), Windows AMD64, and macOS x86_64/arm64. It
+selects normal CPython builds, excluding free-threaded builds. The source
+distribution is installed and tested in a clean environment. Distribution
+artifacts from each workflow run are available for review; remote checks must
+actually run before platform compatibility is considered verified.
 
 ## One-time external setup
 
